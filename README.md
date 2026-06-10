@@ -51,6 +51,7 @@ SMTP_PORT=587
 SMTP_USER=admin@example.com
 SMTP_PASSWORD=coloca_tu_password_o_app_password
 ADMIN_EMAIL=seguridad@example.com
+VIRUSTOTAL_API_KEY=tu_api_key_de_virustotal_opcional
 ```
 
 No coloques contrasenas dentro del codigo fuente. El correo del administrador se cambia con `ADMIN_EMAIL`.
@@ -101,11 +102,12 @@ Menu disponible:
 
 ```text
 1. Iniciar monitoreo IDS
-2. Ver lista blanca
+2. Gestionar lista blanca
 3. Ver reporte de sitios visitados
 4. Ver alertas generadas
-5. Probar envio de correo
-6. Salir
+5. Enviar reporte por correo
+6. Consultar IP en VirusTotal
+7. Salir
 ```
 
 Al iniciar el monitoreo puedes escribir una interfaz especifica, por ejemplo `eth0`, `ens33` o `wlan0`, o presionar Enter para autodeteccion.
@@ -114,11 +116,12 @@ Al iniciar el monitoreo puedes escribir una interfaz especifica, por ejemplo `et
 
 ### 1. Lista blanca IP/MAC
 
-1. Edita `config/whitelist.csv` con las IP y MAC autorizadas.
-2. Ejecuta el IDS y selecciona la opcion `1`.
-3. Genera trafico normal desde equipos autorizados de la red.
-4. Conecta o usa un equipo de laboratorio que no este en la lista blanca.
-5. Revisa:
+1. Ahora puedes gestionar la lista blanca directamente desde el menu principal (opcion 2).
+2. Puedes ver los dispositivos, agregar uno nuevo, o quitar uno existente de forma interactiva.
+3. Los cambios se guardan automaticamente en `config/whitelist.csv`.
+4. Ejecuta el IDS e inicia el monitoreo (opcion 1).
+5. Conecta o usa un equipo de laboratorio que no este en la lista blanca.
+6. Revisa:
 
 ```bash
 cat logs/unauthorized_devices.log
@@ -169,17 +172,27 @@ Cuando se detecta una IP incluida en `config/blacklist_ips.csv`, el sistema ejec
 
 Si no encuentra datos o falla `whois`, el correo indicara `No disponible` y el IDS continuara funcionando.
 
-### 5. Correo
+### 5. Correo (Reportes)
 
-1. Configura `config/.env`.
+1. Configura `config/.env` con tus datos SMTP y el correo por defecto (`ADMIN_EMAIL`).
 2. Ejecuta:
 
 ```bash
 sudo python3 src/main.py
 ```
 
-3. Selecciona la opcion `5`.
-4. Revisa la bandeja del administrador configurado en `ADMIN_EMAIL`.
+3. Selecciona la opcion `5` (Enviar reporte por correo).
+4. El sistema mostrara un resumen del estado del IDS (dispositivos, alertas, etc.).
+5. Confirmaras el envio y podras elegir un correo destino especifico. Si no escribes nada y presionas Enter, se usara el `ADMIN_EMAIL` del archivo `.env`.
+6. Revisa la bandeja de entrada del correo especificado.
+
+### 6. VirusTotal
+
+1. Configura `VIRUSTOTAL_API_KEY` en `config/.env`.
+2. Desde el menu principal selecciona la opcion `6` (Consultar IP en VirusTotal).
+3. Introduce la IP que deseas analizar.
+4. El IDS consultara la API de VirusTotal y te mostrara el resumen (limpia, maliciosa, sospechosa).
+5. Las respuestas se almacenan en un cache temporal para evitar consumo innecesario de la API.
 
 ## Logs
 

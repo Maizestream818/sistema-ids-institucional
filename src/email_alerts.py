@@ -4,6 +4,7 @@ import smtplib
 from dataclasses import dataclass
 from email.message import EmailMessage
 
+from colors import error, success, warning
 from config_loader import append_log, get_env_value, load_environment
 
 
@@ -35,7 +36,7 @@ def load_email_config() -> EmailConfig:
     )
 
 
-def _validate_config(config: EmailConfig) -> list[str]:
+def _validate_config(config: EmailConfig, has_custom_to: bool = False) -> list[str]:
     missing = []
     if not config.smtp_server:
         missing.append("SMTP_SERVER")
@@ -43,27 +44,29 @@ def _validate_config(config: EmailConfig) -> list[str]:
         missing.append("SMTP_USER")
     if not config.smtp_password:
         missing.append("SMTP_PASSWORD")
-    if not config.admin_email:
+    if not config.admin_email and not has_custom_to:
         missing.append("ADMIN_EMAIL")
     return missing
 
 
-def send_email(subject: str, body: str, config: EmailConfig | None = None) -> bool:
+def send_email(subject: str, body: str, config: EmailConfig | None = None, to_email: str | None = None) -> bool:
     config = config or load_email_config()
-    missing = _validate_config(config)
+    missing = _validate_config(config, bool(to_email))
 
     if missing:
         append_log(
             "alerts.log",
             "No se envio correo porque faltan variables: " + ", ".join(missing),
         )
-        print("Correo no enviado. Faltan variables en config/.env: " + ", ".join(missing))
+        print(warning("  ⚠  Correo no enviado. Faltan variables en config/.env: " + ", ".join(missing)))
         return False
+
+    target_email = to_email or config.admin_email
 
     message = EmailMessage()
     message["Subject"] = subject
     message["From"] = config.smtp_user
-    message["To"] = config.admin_email
+    message["To"] = target_email
     message.set_content(body)
 
     try:
@@ -75,7 +78,7 @@ def send_email(subject: str, body: str, config: EmailConfig | None = None) -> bo
         return True
     except Exception as exc:
         append_log("alerts.log", f"Error al enviar correo: {exc}")
-        print(f"No se pudo enviar el correo: {exc}")
+        print(error(f"  ✘ No se pudo enviar el correo: {exc}"))
         return False
 
 

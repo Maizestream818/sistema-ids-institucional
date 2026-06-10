@@ -3,6 +3,7 @@ from __future__ import annotations
 import ipaddress
 from typing import Any
 
+from colors import dim, error, info, success, warning
 from config_loader import append_log, ensure_runtime_directories
 from site_monitor import SiteMonitor
 from threat_intel import ThreatIntel
@@ -32,8 +33,8 @@ class PacketSniffer:
             append_log("alerts.log", "No se pudo iniciar monitoreo: Scapy no esta instalado.")
             return
 
-        print("Monitoreo IDS iniciado. Presiona Ctrl+C para detener.")
-        print("Solo se registran metadatos necesarios para alertas y bitacoras.")
+        print(success("  ✔ Monitoreo IDS iniciado. Presiona Ctrl+C para detener."))
+        print(dim("    Solo se registran metadatos necesarios para alertas y bitacoras."))
 
         try:
             sniff(
@@ -44,12 +45,12 @@ class PacketSniffer:
                 count=packet_count,
             )
         except PermissionError:
-            print("Permiso insuficiente para capturar paquetes. Ejecuta con sudo o configura setcap.")
+            print(error("  ✘ Permiso insuficiente. Ejecuta con sudo o configura setcap."))
             append_log("alerts.log", "Permiso insuficiente para capturar paquetes.")
         except KeyboardInterrupt:
-            print("\nMonitoreo detenido por el usuario.")
+            print(info("\n  Monitoreo detenido por el usuario."))
         except Exception as exc:
-            print(f"No se pudo iniciar o mantener la captura: {exc}")
+            print(error(f"  ✘ No se pudo iniciar o mantener la captura: {exc}"))
             append_log("alerts.log", f"Error de captura: {exc}")
 
     def process_packet(self, packet: Any) -> None:

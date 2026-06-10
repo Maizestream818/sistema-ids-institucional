@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from colors import BG, FG, dim, info
+
 from config_loader import append_log
 
 
@@ -19,4 +21,4 @@ class SiteMonitor:
 
         self.last_seen.add(event_key)
         append_log("site_report.log", f"Consulta DNS. IP_origen={src_ip} Dominio={domain}")
-        print(f"DNS registrado: {src_ip} -> {domain}")
+        print(f"{BG}{FG}  {info('DNS')} {dim(src_ip)} → {domain}")

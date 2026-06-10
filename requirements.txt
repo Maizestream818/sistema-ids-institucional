@@ -1,2 +1,8 @@
+# Captura y analisis de paquetes de red
 scapy>=2.5.0,<3.0.0
+
+# Carga de variables de entorno desde config/.env
 python-dotenv>=1.0.0,<2.0.0
+
+# Consultas HTTP a la API de VirusTotal
+requests>=2.31.0,<3.0.0

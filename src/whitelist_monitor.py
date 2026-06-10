@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import csv
 import ipaddress
 import re
 from dataclasses import dataclass
 
+from colors import BG, BOLD, CYAN, FG, GREEN, R, RED, WHITE, YELLOW, dim, error, fill_line, info, success, warning
 from config_loader import WHITELIST_FILE, append_log, read_csv_rows
 from email_alerts import send_email
 
@@ -56,6 +58,100 @@ def load_whitelist() -> list[AuthorizedDevice]:
         )
 
     return devices
+
+
+def _save_whitelist(devices: list[AuthorizedDevice]) -> None:
+    """Write the full device list back to the CSV file."""
+    with WHITELIST_FILE.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["ip", "mac", "description"])
+        for device in devices:
+            writer.writerow([device.ip, device.mac, device.description])
+
+
+def add_device_interactive() -> None:
+    """Prompt the user for IP, MAC, and description, then add to whitelist."""
+    print(fill_line(info("  ── Agregar dispositivo a la lista blanca ──")))
+    print(fill_line(""))
+
+    ip_addr = input(f"{BG}{FG}  IP del dispositivo: ").strip()
+    if not ip_addr:
+        print(fill_line(warning("  ⚠  No se ingreso ninguna IP.")))
+        return
+    if not is_valid_ip(ip_addr):
+        print(fill_line(error(f"  ✘ '{ip_addr}' no es una IP valida.")))
+        return
+
+    mac_addr = input(f"{BG}{FG}  MAC del dispositivo {dim('(ej: aa:bb:cc:dd:ee:ff)')}: ").strip()
+    if not mac_addr:
+        print(fill_line(warning("  ⚠  No se ingreso ninguna MAC.")))
+        return
+    mac_addr = normalize_mac(mac_addr)
+    if not is_valid_mac(mac_addr):
+        print(fill_line(error(f"  ✘ '{mac_addr}' no es una MAC valida.")))
+        return
+
+    description = input(f"{BG}{FG}  Descripcion {dim('(ej: Laptop de Juan)')}: ").strip()
+    if not description:
+        description = "Sin descripcion"
+
+    devices = load_whitelist()
+
+    # Check for duplicates
+    for d in devices:
+        if d.ip == ip_addr and d.mac == mac_addr:
+            print(fill_line(warning(f"  ⚠  El dispositivo {ip_addr} / {mac_addr} ya esta en la lista.")))
+            return
+
+    new_device = AuthorizedDevice(ip=ip_addr, mac=mac_addr, description=description)
+    devices.append(new_device)
+    _save_whitelist(devices)
+    append_log("alerts.log", f"Dispositivo agregado a whitelist: IP={ip_addr} MAC={mac_addr} Desc={description}")
+    print(fill_line(success(f"  ✔ Dispositivo agregado: {ip_addr}  {mac_addr}  {description}")))
+
+
+def remove_device_interactive() -> None:
+    """Show numbered list of devices and let the user pick one to remove."""
+    devices = load_whitelist()
+
+    if not devices:
+        print(fill_line(warning("  ⚠  La lista blanca esta vacia.")))
+        return
+
+    print(fill_line(info("  ── Quitar dispositivo de la lista blanca ──")))
+    print(fill_line(""))
+    print(fill_line(f"  {BOLD}{CYAN}{'#':<5} {'IP':<18} {'MAC':<20} {'Descripcion'}{R}"))
+    print(fill_line(f"  {dim('─' * 65)}"))
+
+    for i, device in enumerate(devices, 1):
+        print(fill_line(
+            f"  {YELLOW}{i:<5}{R}"
+            f"{WHITE}{device.ip:<18}{R} "
+            f"{dim(device.mac):<29}  "
+            f"{GREEN}{device.description}{R}"
+        ))
+
+    print(fill_line(""))
+    choice = input(f"{BG}{FG}  Numero del dispositivo a quitar {dim('(0 para cancelar)')}: ").strip()
+
+    try:
+        index = int(choice)
+    except ValueError:
+        print(fill_line(error("  ✘ Entrada invalida.")))
+        return
+
+    if index == 0:
+        print(fill_line(dim("  Cancelado.")))
+        return
+
+    if index < 1 or index > len(devices):
+        print(fill_line(error(f"  ✘ No existe el dispositivo #{index}.")))
+        return
+
+    removed = devices.pop(index - 1)
+    _save_whitelist(devices)
+    append_log("alerts.log", f"Dispositivo eliminado de whitelist: IP={removed.ip} MAC={removed.mac}")
+    print(fill_line(success(f"  ✔ Eliminado: {removed.ip}  {removed.mac}  {removed.description}")))
 
 
 class WhitelistMonitor:
@@ -114,14 +210,20 @@ class WhitelistMonitor:
             "Revise si el equipo pertenece a la red de laboratorio autorizada."
         )
         send_email("Alerta IDS: dispositivo no autorizado", email_body)
-        print(log_message)
+        print(warning(f"  ⚠  Dispositivo no autorizado: IP={src_ip}  MAC={src_mac}  [{reason_text}]"))
         return True
 
     def formatted_devices(self) -> str:
         if not self.devices:
-            return "No hay dispositivos validos cargados en la lista blanca."
+            return warning("  No hay dispositivos validos cargados en la lista blanca.")
 
-        lines = ["IP | MAC | Descripcion", "-" * 60]
+        header_line = f"  {BOLD}{CYAN}{'IP':<18} {'MAC':<20} {'Descripcion'}{R}"
+        sep = f"  {dim('─' * 60)}"
+        lines = [header_line, sep]
         for device in self.devices:
-            lines.append(f"{device.ip} | {device.mac} | {device.description}")
+            lines.append(
+                f"  {WHITE}{device.ip:<18}{R} "
+                f"{dim(device.mac)}  "
+                f"{GREEN}{device.description}{R}"
+            )
         return "\n".join(lines)
