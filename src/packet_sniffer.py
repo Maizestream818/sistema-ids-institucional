@@ -29,9 +29,23 @@ class PacketSniffer:
         try:
             from scapy.all import sniff
         except ImportError:
-            print("Scapy no esta instalado. Ejecuta: pip install -r requirements.txt")
-            append_log("alerts.log", "No se pudo iniciar monitoreo: Scapy no esta instalado.")
-            return
+            import os
+            import subprocess
+            import sys
+            print(warning("  ⚠  Scapy no esta instalado. Descargando e instalando dependencias automaticamente..."))
+            try:
+                req_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "requirements.txt")
+                if os.path.exists(req_path):
+                    subprocess.check_call([sys.executable, "-m", "pip", "install", "--break-system-packages", "-r", req_path])
+                else:
+                    subprocess.check_call([sys.executable, "-m", "pip", "install", "--break-system-packages", "scapy"])
+                print(success("  ✔ Instalacion completada exitosamente."))
+                from scapy.all import sniff
+            except Exception as e:
+                print(error(f"  ✘ Error al instalar dependencias automaticamente: {e}"))
+                print("  Ejecuta manualmente: pip install -r requirements.txt")
+                append_log("alerts.log", "No se pudo iniciar monitoreo: Scapy no esta instalado.")
+                return
 
         print(success("  ✔ Monitoreo IDS iniciado. Presiona Ctrl+C para detener."))
         print(dim("    Solo se registran metadatos necesarios para alertas y bitacoras."))

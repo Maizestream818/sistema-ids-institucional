@@ -2,3 +2,4 @@ ip,mac,description
 192.168.100.1,28:6d:da:c1:5e:98,Gateway / Router
 192.168.100.2,b0:ec:dd:62:bc:9c,Dispositivo de red local
 192.168.100.246,74:4c:a1:73:67:4d,Equipo principal (esta maquina)
+192.168.0.101,a4:83:e7:2b:11:0f,fulanito
